@@ -14,7 +14,7 @@ def main():
     Returns:
         None
     """
-    
+
     # ====================================================
     # Column Definitions
     # ====================================================
@@ -41,8 +41,7 @@ def main():
     col3 = Column(
         name="id", 
         domain=Domain(
-            allowed_types=[int], 
-            constraints=[RangeConstraint(16, 32)]
+            allowed_types=[int, str]
         )
     )
     
@@ -63,7 +62,7 @@ def main():
     
     # Insert data into the Person relation
     person.insert("id", 1, "name", "Pupuce")  # Valid insertion
-    person.insert("id", 2, "name", "RAKOTOBE")  # Should raise an exception due to name length = 8 > 6
+    # person.insert("id", 2, "name", "RAKOTOBE")  # Should raise an exception due to name length = 8 > 6
     person.insert("id", 3, "name", "Japon")  # Valid insertion
     person.insert("id", "20", "name", "Salohy")  # Valid insertion (id as string)
 

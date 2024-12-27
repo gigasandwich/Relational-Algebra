@@ -23,11 +23,17 @@ class Row:
         self.data: Dict[str, Any] = {}
 
         # Putting all the data values "None" by default
-        for col in relation.columns:
+        for col in self.relation.columns:
             self.data[col.name] = None
 
     # ====================================================
     # Main Methods
     # ====================================================
 
-    
+
+    # ====================================================
+    # Helper Methods
+    # ====================================================
+
+    def add_value(self, column_name: str, value: object):
+        self.data[column_name] = value

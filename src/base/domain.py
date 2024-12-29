@@ -4,7 +4,7 @@ from ..constraint.constraint import *
 class Domain:
     """
     Represents a set of elements along with some constraints 
-    A domain has the same methods as a set in relational algebra context
+    A domain has the same methods as a set in relational algebra context (union, intersection, difference)
     """
 
     # ====================================================
@@ -14,9 +14,9 @@ class Domain:
     def __init__(self, allowed_values: List[object] = None, allowed_types: List[type] = None, constraints: List[Constraint] = None):
         """
         Args:
-            allowed_values (List[object]): list of objects (e.g: 1, "Fako", True, None)
-            allowed_type (List[type]): list of types (e.g: int, str)
-            constraints (List[Constraint]): list of constraint (e.g: PositiveConstraint(100), NotNullConstraint())
+            allowed_values: e.g: 1, "Fako", True, None
+            allowed_type: e.g: int, str
+            constraints: e.g: PositiveConstraint(100), NotNullConstraint()
         """
         self.allowed_values = allowed_values  if allowed_values is not None else [] # List[object] won't work because it's only for type hints 
         self.allowed_types = allowed_types if allowed_types is not None else [] 
@@ -29,9 +29,6 @@ class Domain:
     def is_valid(self, value: object) -> bool:
         """
         Checks if a value is conform to the value of the attributes
-
-        Args: 
-            value: The object to be checked
         """
         # For null values
         if value is None:
@@ -62,30 +59,22 @@ class Domain:
 
     def union(self, other: "Domain"):
         """
-        Creates a new domain which is the result of combining the domain of self and other
-        There's no duplicate value
-
-        Args:
-            other: The other domain to do union with
+        Note: There's no duplicate value
         """
         allowed_types = self.allowed_types | other.allowed_types
         allowed_values = self.allowed_values | other.allowed_values
-        constraints = list(self.constraints).union(list(other.constraints)) 
+        constraints = self.constraints | other.constraints
 
         return Domain(allowed_types, allowed_values, constraints)
     
 
     def intersection(self, other: "Domain"):
         """
-        Creates a new domain which is the result of crossing the same properties of the domain of self and other
-        There's no duplicate value
-
-        Args:
-            other: The other domain to do intersection with
+        Note: There's also no duplicate value
         """
         allowed_types = self.allowed_types & other.allowed_types        
         allowed_values = self.allowed_values & other.allowed_values 
-        constraints = self.constraints.intersection(other.constraints)
+        constraints = self.constraints & other.constraints
 
         return Domain(allowed_types, allowed_values, constraints)
     

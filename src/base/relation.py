@@ -60,30 +60,28 @@ class Relation:
 
         # No excess of column
         if(column_numbers > normal_column_numbers):
-            raise ValueError(f"There should be only {normal_column_numbers}, instead there are {column_numbers - normal_column_numbers} more")
+            raise ValueError(f"Max column number: {normal_column_numbers}, however there are {column_numbers - normal_column_numbers} in the insert statement")
         
         # No column without value
         if args_length%2 != 0:
-            raise ValueError(f"Expected: {args_length+1} arguments instead of just{args_length}")
+            raise ValueError(f"Expected: {args_length+1} arguments instead of just {args_length}")
 
         row = Row(self)
         # Step 1: separating the pair of key-values
-        for i in range (0, args_length, 2):
+        for i in range(0, args_length, 2):
             column_name = args[i]
             value = args[i+1]
             specific_column = self.get_column_by_name(column_name)
 
-
             if row in self.rows:
                 raise ValueError("This row already exist")
 
-            # Not existing column
             if specific_column is None:
                 raise ValueError(f"Column {column_name} doesn't exist")
 
             # Step 2: checking if each value inserted match the domain of the column
             if not specific_column.is_valid(value):
-                raise ValueError(f'Invalid value for column "{column_name}": {value}')
+                raise ValueError(f'Invalid value for column "{column_name}": {value}') # TODO: print the actual invalidity
 
             row.add_value(column_name, value)
 
@@ -93,15 +91,32 @@ class Relation:
         return Row(self)
 
 
-    def project(self, *col_names) -> "Relation":
+    def project(self, *col_names: str) -> "Relation":
         """
         Returns this relation with only the specified columns
 
-        Args:
-            *col_names (str): The only columns no be displayed 
+        Raises: 
+            ValueError: invalid column 
         """
+        new_relation = self.copy() # Creating a copy to evit pointer errors
+        
+        # Step 1: Regrouping the Column objects that are requested
+        needed_cols = []
+        for col_name in col_names:
+            if new_relation.get_column_by_name(col_name) is None: 
+                raise ValueError(f"Column {col_name} doesn't exist")
+            needed_cols.append(self.get_column_by_name(col_name))
+ 
+        # Step 2: Regrouping the Column objects that aren't needed
+        not_needed_cols = ( col for col in new_relation.columns if col not in needed_cols )
 
-        return self
+        # Step 3: a copy of the original relation without the not needed columns (removing the mapping in the rows too)
+        for not_needed_col in not_needed_cols:
+            new_relation.columns.remove(not_needed_col)
+            for row in new_relation.rows:
+                row.data.pop(not_needed_col.name)
+
+        return new_relation
 
     # ====================================================
     # Helper Methods
@@ -113,6 +128,12 @@ class Relation:
                 return column
         return None
     
+    def copy(self) -> "Relation":
+        new_relation = Relation(self.name, *self.columns.copy()) # Don't forget the * before self.columns.copy()
+        new_relation.rows = self.rows.copy()
+        return new_relation
+
+    
     # ====================================================
     # Display Methods
     # ====================================================
@@ -121,19 +142,16 @@ class Relation:
         """
         The string representation of the relation and its components with an sql like form 
         """
-
+        
         if len(self.rows) == 0:
             return "Empty set"
-
+        
         col_names = [ col.name for col in self.columns]
         col_widths = []
 
         for col_name in col_names:
-            # Maximum length of the column name
-            max_name_length = len(col_name)
-
-            # Maximum length of the values in the column
-            max_value_length = max( (len(str(row.data.get(col_name, "")) ) for row in self.rows), default = 0)
+            max_name_length = len(col_name) # Maximum length of the column name
+            max_value_length = max( (len(str(row.data.get(col_name, "")) ) for row in self.rows), default = 0) # Maximum length of the values in the column
 
             # The column width is the larger between max_name and max_value
             col_widths.append(max(max_name_length, max_value_length))

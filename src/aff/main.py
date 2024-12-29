@@ -10,16 +10,14 @@ def main():
     
     This function sets up two relations: Person and PersonDetails, each with their respective
     columns and constraints.
-    
-    Returns:
-        None
     """
 
     # ====================================================
     # Column Definitions
     # ====================================================
 
-    # Define columns for the Person relation with specific constraints
+    # Columns of the first relation (Person) 
+
     col1 = Column(
         name="id", 
         domain=Domain(
@@ -37,7 +35,8 @@ def main():
         )
     )
     
-    # Define columns for the PersonDetails relation with different constraints
+    # Columns of the second relation (PersonDetails) 
+
     col3 = Column(
         name="id", 
         domain=Domain(
@@ -49,7 +48,7 @@ def main():
         name="age", 
         domain=Domain(
             allowed_types=[int], 
-            constraints=[PositiveConstraint()]
+            constraints=[PositiveConstraint(32)]
         )
     )
 
@@ -57,21 +56,17 @@ def main():
     # Relation Definitions
     # ====================================================
 
-    # Create the Person relation with the defined columns
+    # First relation
     person = Relation("Person", col1, col2)
-    
-    # Insert data into the Person relation
     person.insert("id", 1, "name", "Pupuce")  # Valid insertion
-    # person.insert("id", 2, "name", "RAKOTOBE")  # Should raise an exception due to name length = 8 > 6
+    """person.insert("id", 2, "name", "RAKOTOBE")  # Should raise an exception due to name length = 8 > 6"""
     person.insert("id", 3, "name", "Japon")  # Valid insertion
     person.insert("id", "20", "name", "Salohy")  # Valid insertion (id as string)
 
-    # Create the PersonDetails relation with the defined columns
+    # Second relation
     person_details = Relation("PersonDetails", col3, col4)
-    
-    # Insert data into the PersonDetails relation
     person_details.insert("id", 1, "age", 16)  # Valid insertion
-    person_details.insert("id", 2, "age", 38)  # Should raise an exception due to age > 32
+    """person_details.insert("id", 2, "age", 38)  # Should raise an exception due to age > 32"""
     person_details.insert("id", 3, "age", 20)  # Valid insertion
     person_details.insert("id", 100, "age", 20)  # Should raise an exception (id not in Person relation)
     person_details.insert("id", "20", "age", 32)  # Valid insertion (id as string)
@@ -85,6 +80,7 @@ def main():
     
     # Perform projection operation to display only the 'id' column
     person.project("id").display()
+
 
 if __name__ == "__main__":
     main()

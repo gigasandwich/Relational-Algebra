@@ -141,17 +141,17 @@ class Relation:
         for field in copied_other.fields:
             result_relation.add_field(field)
 
-        for row1 in copied_self.tuples:
-            for row2 in copied_other.tuples:
-                combined_row = Tuple(result_relation)
+        for tuple1 in copied_self.tuples:
+            for tuple2 in copied_other.tuples:
+                combined_tuple = Tuple(result_relation)
                 
                 for field in copied_self.fields:
-                    combined_row.add_value(field.name, row1.data[field.name])
+                    combined_tuple.add_value(field.name, tuple1.data[field.name])
                 
                 for field in copied_other.fields:
-                    combined_row.add_value(field.name, row2.data[field.name])
+                    combined_tuple.add_value(field.name, tuple2.data[field.name])
                 
-                result_relation.add_tuple(combined_row)
+                result_relation.add_tuple(combined_tuple)
 
         return result_relation
 
@@ -165,30 +165,67 @@ class Relation:
         new_relation.name = self.name + " THETA_JOIN "  + other.name
         return new_relation
 
-    def natural_join(self, other: "Relation") -> "Relation":
+
+    def natural_join(self, other: "Relation", *common_fields: str) -> "Relation":
+        """
+        Equivalent to equijoin with any fields ????
+
+        Args:
+            common_fields [str]: common fields going by pair eg: "pair1a", "pair1b", "pair2a", "pair2b" 
+        """
+
+        # Keep the tuple ONLY if field from self is equal to field from other
+        condition = " and ".join( f"{self.name}.{common_fields[i]} == {other.name}.{common_fields[i+1]}" for i in range(0, len(common_fields), 2))
+        new_relation = self.cartesian_product(other).select(condition)
+        new_relation.name = f"{self.name} natural_join {other.name}: {common_fields}"
+
+        # Remove duplicate columns from the second relation
+        for i in range(0, len(common_fields), 2):
+            field_from_self = new_relation.get_field_by_name(f"{self.name}.{common_fields[i]}")
+            field_from_other = new_relation.get_field_by_name(f"{other.name}.{common_fields[i+1]}")
+            if field_from_self in new_relation.fields and field_from_other in new_relation.fields:
+                new_relation.fields.remove(field_from_other)
+
+        # Remove the self./other. in the name of the columns
+        new_relation = new_relation.copy_with_removed_fields(f"{self.name}.")
+        new_relation = new_relation.copy_with_removed_fields(f"{other.name}.")
+
+        return new_relation
+
+    def automatic_natural_join(self, other: "Relation") -> "Relation":
         common_fields = [col.name for col in self.fields if col.name in [c.name for c in other.fields]]
+
         cartesian_product = self.cartesian_product(other)
-        condition = " and ".join(
-            [f"{self.name}.{col} == {other.name}.{col}" for col in common_fields]
-        )
+        condition = " and ".join([f"{self.name}.{col} == {other.name}.{col}" for col in common_fields])
         selected_relation = cartesian_product.select(condition)
 
         # Remove duplicate fields
-        result_relation = Relation(f"{self.name} NATURAL_JOIN {other.name}")
-        added_fields: Set[str] = set() 
+        new_relation = Relation(f"{self.name} NATURAL_JOIN {other.name}")
+        added_fields = set()
         for field in selected_relation.fields:
             # Skip duplicate fields (from the second relation in common)
             if field.name.split(".")[-1] not in added_fields:
-                result_relation.add_field(field)
-                added_fields.add(field.name.split(".")[-1]) 
+                new_relation.add_field(field)
+                added_fields.add(field.name.split(".")[-1])
 
-        result_relation.tuples = selected_relation.tuples
-        return result_relation
+        new_relation.tuples = selected_relation.tuples
 
-
-    def equi_join(self, other: "Relation", attr1, attr2) -> "Relation":
-        condition = f"{self.name}.{attr1} == {other.name}.{attr2}"
+        # Remove the self./other. in the name of the columns
+        new_relation = new_relation.copy_with_removed_fields(f"{self.name}.")
+        new_relation = new_relation.copy_with_removed_fields(f"{other.name}.")
+        
+        return new_relation
+    
+    def equi_join(self, other: "Relation", field1, field2) -> "Relation":
+        condition = f"{self.name}.{field1} == {other.name}.{field2}"
         return self.theta_join(other, condition)
+
+    # ====================================================
+    # Outter join methods
+    # ====================================================
+
+    # def outer_join(self, other: "Relation", field1, field2) -> "Relation":
+
 
     # ====================================================
     # Helper Methods
@@ -223,6 +260,25 @@ class Relation:
 
         return new_relation
 
+
+    def copy_with_removed_fields(self, prefix: str) -> "Relation":
+        new_relation = Relation(f"{self.name.removeprefix(prefix)}")
+        for field in self.fields:
+            new_field = Field(field.name.removeprefix(prefix), domain = field.domain)
+            new_relation.add_field(new_field)
+        
+        for tuple in self.tuples:
+            new_tuple = tuple.copy()
+            for field in self.fields:
+                old_field_name = field.name
+                new_field_name = field.name.removeprefix(prefix)
+                new_tuple.data[new_field_name] = new_tuple.data.pop(old_field_name)
+
+            new_relation.add_tuple(new_tuple)
+
+        return new_relation
+    
+
     def add_field(self, field: Field) -> None:
         self.fields.append(field)
 
@@ -235,35 +291,39 @@ class Relation:
 
     def __str__(self):
         """
-        The string representation of the relation and its components with an sql like form 
+        The string representation of the relation and its components with an SQL-like form.
         """
-        
         if len(self.tuples) == 0:
             return "Empty set"
-        
-        col_names = [ col.name for col in self.fields]
-        col_widths = []
 
-        for col_name in col_names:
-            max_name_length = len(col_name) # Maximum length of the field name
-            max_value_length = max( (len(str(row.data.get(col_name, "")) ) for row in self.tuples), default = 0) # Maximum length of the values in the field
+        field_names = [field.name for field in self.fields]
 
-            # The field width is the larger between max_name and max_value
-            col_widths.append(max(max_name_length, max_value_length))
+        field_widths = []
+        for field_name in field_names:
+            max_name_length = len(field_name) 
+            max_value_length = max(
+                (len(str(row.data.get(field_name, ""))) for row in self.tuples), 
+                default=0
+            ) 
 
-            # Create the horizontal border
-            border = "+-" + "-+-".join("-" * width for width in col_widths) + "-+"
+            # field width = max(max_name, max_value)
+            field_widths.append(max(max_name_length, max_value_length))
 
-            # The header row
-            header = "| " + " |".join( col.ljust(width) for col, width in zip(col_names, col_widths)) + " |"
+        border = "+-" + "-+-".join("-" * width for width in field_widths) + "-+"
 
-            # The data tuples
-            data_tuples = ["| " + " |".join(str(row.data.get(col, "")).ljust(width) 
-                        for col, width in zip(col_names, col_widths)) + " |" 
-                        for row in self.tuples
-            ]
+        header = "| " + " | ".join(
+            field.ljust(width) for field, width in zip(field_names, field_widths)
+        ) + " |"
+
+        data_tuples = [
+            "| " + " | ".join(
+                str(row.data.get(field, "")).ljust(width) for field, width in zip(field_names, field_widths)
+            ) + " |"
+            for row in self.tuples
+        ]
 
         return "\n".join([border, header, border] + data_tuples + [border])
+
     
 
     def display(self) -> None: 

@@ -68,8 +68,8 @@ def main():
     person_details.insert("id", 1, "age", 16)  # Valid insertion
     """person_details.insert("id", 2, "age", 38)  # Should raise an exception due to age > 32"""
     person_details.insert("id", 3, "age", 20)  # Valid insertion
-    person_details.insert("id", 100, "age", 20)  # Should raise an exception (id not in Person relation)
     person_details.insert("id", "20", "age", 32)  # Valid insertion (id as string)
+    person_details.insert("id", 100, "age", 20)  # Should raise an exception (id not in Person relation)
 
     # ====================================================
     # Relation main methods
@@ -87,10 +87,10 @@ def main():
     # person.select(condition2).display()
 
     # Join methods
-    condition1 = 'Person.id == PersonDetails.id'
     # person.cartesian_product(person_details).display()
-    # person.natural_join(person_details).display()
-    person.theta_join(person_details, condition1).display()
+    # person.automatic_natural_join(person_details).display()
+    # person.natural_join(person_details, "id", "id").display()
+    # person.theta_join(person_details, "Person.id == PersonDetails.id").display()
     # person.equi_join(person_details, "id", "id").display()
 
 

@@ -72,14 +72,19 @@ def main():
     person_details.insert("id", "20", "age", 32)  # Valid insertion (id as string)
 
     # ====================================================
-    # Relation Methods Definitions
+    # Relation main methods
     # ====================================================
     
-    # Display the contents of the Person relation
+    # First look at person relation
     person.display()  
+
+    # Conditions for the selection method 
+    condition1 = 'id <= 3'
+    condition2 = '(id == "20" or name == "Pupuce") and (name == "Salohy")'
     
-    # Perform projection operation to display only the 'id' column
-    person.project("id").display()
+    # Relation main methods
+    # person.project("id").display()
+    person.select(condition2).display()
 
 
 if __name__ == "__main__":

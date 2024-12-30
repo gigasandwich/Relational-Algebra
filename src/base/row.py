@@ -1,6 +1,6 @@
-# from typing import Dict
 from __future__ import annotations # Solution to circular import: from ..base.relation import Relation
 from typing import Dict, Any
+from ..condition.condition import simplify_and_evaluate
 
 class Row:
     """
@@ -30,6 +30,11 @@ class Row:
     # Main Methods
     # ====================================================
 
+    def evaluate_condition(self, condition) -> bool:
+        # Step 1: changing the column names by their real values
+        for column_name, value in self.data.items():
+            condition = condition.replace(column_name, repr(value))
+        return simplify_and_evaluate(condition)
 
     # ====================================================
     # Helper Methods

@@ -1,1 +1,2 @@
-python -m src.aff.main # -m as for module-name
+@REM # -m as for module-name
+python -m src.aff.main

@@ -26,14 +26,10 @@ class Relation:
         self.columns: List[Column] = []
         self.rows : List[Row] = []
         
-        if columns is not None: # Must have a column
+        if columns is not None: 
             for col in columns:
                 self.columns.append(col)
-        else:
-            raise ValueError("A relation needs at least one column")
-        
-        print(f"Relation {name} created")
-
+       
     # ====================================================
     # Main Methods
     # ====================================================
@@ -86,8 +82,6 @@ class Relation:
             row.add_value(column_name, value)
 
         self.rows.append(row)
-
-        print("New record inserted")
         return Row(self)
 
 
@@ -117,6 +111,22 @@ class Relation:
                 row.data.pop(not_needed_col.name)
 
         return new_relation
+    
+    
+    def select(self, condition: str)-> "Relation":
+        """
+        Eliminates row from the original relation ( those that don't match the condition)
+        
+        Raise:
+            ValueError: syntax error
+        """
+        copy = self.copy()
+        new_relation = Relation(f"{copy.name} where: {condition}", *copy.columns)
+        for row in copy.rows: 
+            if row.evaluate_condition(condition):
+                new_relation.rows.append(row)
+        return new_relation
+
 
     # ====================================================
     # Helper Methods
@@ -172,8 +182,5 @@ class Relation:
     
 
     def display(self) -> None: 
-        """
-        Prints the string value of this relation in the terminal
-        """
         print(self)
 

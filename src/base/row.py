@@ -42,3 +42,9 @@ class Row:
 
     def add_value(self, column_name: str, value: object):
         self.data[column_name] = value
+
+    def copy(self) -> "Row":
+        new_row = Row(self.relation)
+        for column_name in self.data:
+            new_row.add_value(column_name, self.data[column_name])
+        return new_row

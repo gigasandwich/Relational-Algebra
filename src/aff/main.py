@@ -84,7 +84,15 @@ def main():
     
     # Relation main methods
     # person.project("id").display()
-    person.select(condition2).display()
+    # person.select(condition2).display()
+
+    # Join methods
+    condition1 = 'Person.id == PersonDetails.id'
+    # person.cartesian_product(person_details).display()
+    # person.natural_join(person_details).display()
+    person.theta_join(person_details, condition1).display()
+    # person.equi_join(person_details, "id", "id").display()
+
 
 
 if __name__ == "__main__":

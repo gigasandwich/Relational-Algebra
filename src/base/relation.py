@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Set
 from .column import Column
 from .row import Row
 
@@ -126,7 +126,69 @@ class Relation:
             if row.evaluate_condition(condition):
                 new_relation.rows.append(row)
         return new_relation
+    
+    
+    def cartesian_product(self, other: "Relation") -> "Relation":  
+        # Copying to dodge pointer issue  
+        copied_self = self.copy_with_renamed_columns(self.name)
+        copied_other = other.copy_with_renamed_columns(other.name)
 
+        result_relation = Relation(self.name + " x " + other.name)
+        
+        for column in copied_self.columns:
+            result_relation.add_column(column)
+
+        for column in copied_other.columns:
+            result_relation.add_column(column)
+
+        for row1 in copied_self.rows:
+            for row2 in copied_other.rows:
+                combined_row = Row(result_relation)
+                
+                for column in copied_self.columns:
+                    combined_row.add_value(column.name, row1.data[column.name])
+                
+                for column in copied_other.columns:
+                    combined_row.add_value(column.name, row2.data[column.name])
+                
+                result_relation.add_row(combined_row)
+
+        return result_relation
+
+    # ====================================================
+    # Inner join methods
+    # ====================================================
+
+    def theta_join(self, other: "Relation", condition: str) -> "Relation":
+        cartesian_product = self.cartesian_product(other)
+        new_relation = cartesian_product.select(condition)
+        new_relation.name = self.name + " THETA_JOIN "  + other.name
+        return new_relation
+
+    def natural_join(self, other: "Relation") -> "Relation":
+        common_columns = [col.name for col in self.columns if col.name in [c.name for c in other.columns]]
+        cartesian_product = self.cartesian_product(other)
+        condition = " and ".join(
+            [f"{self.name}.{col} == {other.name}.{col}" for col in common_columns]
+        )
+        selected_relation = cartesian_product.select(condition)
+
+        # Remove duplicate columns
+        result_relation = Relation(f"{self.name} NATURAL_JOIN {other.name}")
+        added_columns: Set[str] = set() 
+        for column in selected_relation.columns:
+            # Skip duplicate columns (from the second relation in common)
+            if column.name.split(".")[-1] not in added_columns:
+                result_relation.add_column(column)
+                added_columns.add(column.name.split(".")[-1]) 
+
+        result_relation.rows = selected_relation.rows
+        return result_relation
+
+
+    def equi_join(self, other: "Relation", attr1, attr2) -> "Relation":
+        condition = f"{self.name}.{attr1} == {other.name}.{attr2}"
+        return self.theta_join(other, condition)
 
     # ====================================================
     # Helper Methods
@@ -142,8 +204,31 @@ class Relation:
         new_relation = Relation(self.name, *self.columns.copy()) # Don't forget the * before self.columns.copy()
         new_relation.rows = self.rows.copy()
         return new_relation
-
     
+    def copy_with_renamed_columns(self, prefix: str) -> "Relation":
+        new_relation = Relation(self.name)  
+
+        for column in self.columns:
+            new_column = Column(prefix + "." + column.name, domain = column.domain)
+            new_relation.add_column(new_column)
+        
+        for row in self.rows:
+            new_row = row.copy()
+            for column in self.columns:
+                old_column_name = column.name
+                new_column_name = prefix + "." + column.name
+                new_row.data[new_column_name] = new_row.data.pop(old_column_name)
+
+            new_relation.add_row(new_row)
+
+        return new_relation
+
+    def add_column(self, column: Column) -> None:
+        self.columns.append(column)
+
+    def add_row(self, row: Row):
+        self.rows.append(row)
+
     # ====================================================
     # Display Methods
     # ====================================================

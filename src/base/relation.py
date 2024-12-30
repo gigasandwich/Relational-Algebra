@@ -55,7 +55,7 @@ class Relation:
         normal_field_numbers = len(self.fields)
 
         # No excess of column
-        if(field_numbers > normal_field_numbers):
+        if field_numbers > normal_field_numbers:
             raise ValueError(f"Max column number: {normal_field_numbers}, however there are {field_numbers - normal_field_numbers} in the insert statement")
         
         # No column without value
@@ -75,9 +75,13 @@ class Relation:
             if specific_column is None:
                 raise ValueError(f"Column {field_name} doesn't exist")
 
-            # Step 2: checking if each value inserted match the domain of the column
-            if not specific_column.is_valid(value):
-                raise ValueError(f'Invalid value for column "{field_name}": {value}') # TODO: print the actual invalidity
+            try:
+                # Step 2: checking if each value inserted match the domain of the column
+                if not specific_column.is_valid(value):
+                    # We don't reach this because the exception is raised in `is_valid`
+                    pass
+            except ValueError as e:
+                raise ValueError(f'Error validating value for column "{field_name}": {str(e)}')
 
             row.add_value(field_name, value)
 
@@ -224,9 +228,89 @@ class Relation:
     # Outter join methods
     # ====================================================
 
-    # def outer_join(self, other: "Relation", field1, field2) -> "Relation":
+    def outer_join(self, other: "Relation", condition: str) -> "Relation":
+        """
+        Performs a full outer join between two relations based on a condition.
+        """
+        # Perform a cartesian product and filter based on the condition
+        cartesian_product = self.cartesian_product(other)
+        matched = cartesian_product.select(condition)
+        
+        # Create the resulting relation
+        result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
+        result_relation.fields = cartesian_product.fields
+
+        # Add matched tuples
+        result_relation.tuples.extend(matched.tuples)
+
+        # Identify unmatched rows from the left relation
+        unmatched_left = [
+            row for row in self.tuples
+            if not any(matched_row.matches(row, self.fields) for matched_row in matched.tuples)
+        ]
+        for row in unmatched_left:
+            new_row = Tuple(result_relation)
+            for field in self.fields:
+                new_row.data[f"{self.name}.{field.name}"] = row.data[field.name]
+            for field in other.fields:
+                new_row.data[f"{other.name}.{field.name}"] = None  # Fill unmatched columns with None
+            result_relation.add_tuple(new_row)
+
+        # Identify unmatched rows from the right relation
+        unmatched_right = [
+            row for row in other.tuples
+            if not any(matched_row.matches(row, other.fields) for matched_row in matched.tuples)
+        ]
+        for row in unmatched_right:
+            new_row = Tuple(result_relation)
+            for field in self.fields:
+                new_row.data[f"{self.name}.{field.name}"] = None  # Fill unmatched columns with None
+            for field in other.fields:
+                new_row.data[f"{other.name}.{field.name}"] = row.data[field.name]
+            result_relation.add_tuple(new_row)
+
+        return result_relation
 
 
+
+    def left_outer_join(self, other: "Relation", condition: str) -> "Relation":
+        """
+        Performs a left outer join between two relations based on a condition.
+        """
+        # Perform a cartesian product with prefixed fields
+        cartesian_product = self.cartesian_product(other)
+        matched = cartesian_product.select(condition)
+        
+        result_relation = Relation(f"{self.name} LEFT OUTER JOIN {other.name}")
+        result_relation.fields = cartesian_product.fields
+
+        # Add matched tuples
+        result_relation.tuples.extend(matched.tuples)
+
+        # Add unmatched tuples from the left relation
+        left_only = [
+            row for row in self.tuples
+            if not any(row.equals(other_row) for other_row in matched.tuples)
+        ]
+        for row in left_only:
+            new_row = Tuple(result_relation)
+            for field in self.fields:
+                new_row.data[field.name] = row.data[field.name]
+            for field in other.fields:
+                new_row.data[field.name] = None  # Fill unmatched columns with None
+            result_relation.add_tuple(new_row)
+
+        return result_relation
+
+
+    def right_outer_join(self, other: "Relation", condition: str) -> "Relation":
+        """
+        Performs a right outer join between two relations based on a condition.
+        """
+        return other.left_outer_join(self, condition)
+
+
+    
     # ====================================================
     # Helper Methods
     # ====================================================
@@ -278,6 +362,11 @@ class Relation:
 
         return new_relation
     
+    def has_matching_tuple(self, tuple, other: "Relation") -> bool:
+        for other_tuple in other.tuples:
+            if tuple.equals(other_tuple):
+                return True 
+        return False
 
     def add_field(self, field: Field) -> None:
         self.fields.append(field)

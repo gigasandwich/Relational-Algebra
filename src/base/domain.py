@@ -36,10 +36,9 @@ class Domain:
                 return True
             
             if NotNullConstraint in self.constraints:
-                return False
-            
-            return False
-    
+                raise ValueError("Value cannot be null.")
+
+
         # Check allowed values
         if value in self.allowed_values:
             return True
@@ -50,11 +49,15 @@ class Domain:
                 # Check constraints validity
                 for constraint in self.constraints:
                     if not constraint.is_valid(value):
-                        return False
+                        try:
+                            constraint.is_valid(value)
+                        except ValueError as e:
+                            raise e  # Re-raise the exception with the error message
                     
                 return True
         
-        return False
+        raise ValueError(f"Invalid value: {value}.\nAllowed values are: {self.allowed_values},\nAllowed types are: {self.allowed_types}.")
+
     
 
     def union(self, other: "Domain"):

@@ -26,7 +26,9 @@ class NotNullConstraint(Constraint):
     This constraint makes sure that any passed object must be not null
     """
     def is_valid(object):
-        return object is not None
+        if object is None:
+            raise ValueError("Value cannot be null.")
+        return True
 
 class StringLengthConstraint(Constraint):
     """
@@ -37,10 +39,10 @@ class StringLengthConstraint(Constraint):
         self.max = max
 
     def is_valid(self, object):
-        if not isinstance(object, str):
-            return True
-        string = object # for better readability
-        return self.min <= len(string) <= self.max
+        if isinstance(object, str):
+            if not (self.min <= len(object) <= self.max):
+                raise ValueError(f"Expected string length:  [{self.min}, {self.max}]. Reality: {len(object)}.")
+        return True
 
 
 class RangeConstraint(Constraint):
@@ -51,10 +53,18 @@ class RangeConstraint(Constraint):
         self.min = min 
         self.max = max
 
+    """
+    Before:
     def is_valid(self, object):
         if not isinstance(object, (int, float)):  # Skip validation for non-numeric objects
-            return True
-        return self.min <= object <= self.max
+        return True
+    return self.min <= object <= self.max
+    """
+    def is_valid(self, object):
+        if isinstance(object, (int, float)):  # Skip validation for non-numeric objects
+            if not (self.min <= object <= self.max):
+                raise ValueError(f"Value must be between {self.min} and {self.max}. Got {object}.")
+        return True
 
 
 class PositiveConstraint(Constraint):
@@ -65,10 +75,10 @@ class PositiveConstraint(Constraint):
         self.max = max
 
     def is_valid(self, value) -> bool:
-        if not isinstance(value, (int, float)):
-            return False
-
-        if self.max is None:
-            return value >= 0
-        return 0 <= value <= self.max
+        if isinstance(value, (int, float)):
+            if value < 0:
+                raise ValueError("Value must be positive. Got negative value.")
+            if self.max is not None and value > self.max:
+                raise ValueError(f"Value must be less than or equal to {self.max}. Got {value}.")
+        return True
 

@@ -30,7 +30,7 @@ def main():
     field2 = Field(
         name="name", 
         domain=Domain(
-            allowed_values=["Pupuce", "Japon", "Bocdom", "Stove", "Poyz", "Salohy"], 
+            allowed_values=["Pupuce", "Japon", "Bocdom", "Stove", "Poyz", "Salohy", "RAKOTO"], 
             constraints=[StringLengthConstraint(1, 6)]
         )
     )
@@ -59,17 +59,17 @@ def main():
     # First relation
     person = Relation("Person", field1, field2)
     person.insert("id", 1, "name", "Pupuce")  # Valid insertion
-    """person.insert("id", 2, "name", "RAKOTOBE")  # Should raise an exception due to name length = 8 > 6"""
+    person.insert("id", 2, "name", "RAKOTO")  # If name = RAKOTOBE: Should raise an exception due to name length = 8 > 6
     person.insert("id", 3, "name", "Japon")  # Valid insertion
     person.insert("id", "20", "name", "Salohy")  # Valid insertion (id as string)
 
     # Second relation
     person_details = Relation("PersonDetails", field3, field4)
     person_details.insert("id", 1, "age", 16)  # Valid insertion
-    """person_details.insert("id", 2, "age", 38)  # Should raise an exception due to age > 32"""
     person_details.insert("id", 3, "age", 20)  # Valid insertion
     person_details.insert("id", "20", "age", 32)  # Valid insertion (id as string)
-    person_details.insert("id", 100, "age", 20)  # Should raise an exception (id not in Person relation)
+    person_details.insert("id", 100, "age", 20)  # id not in Person relation
+    person_details.insert("id", 200, "age", 18)  # If age = 38: Should raise an exception due to age > 32
 
     # ====================================================
     # Relation main methods
@@ -77,22 +77,28 @@ def main():
     
     # First look at person relation
     person.display()  
+    person_details.display()
 
     # Conditions for the selection method 
     condition1 = 'id <= 3'
     condition2 = '(id == "20" or name == "Pupuce") and (name == "Salohy")'
+    condition3 = "Person.id == PersonDetails.id"
     
     # Relation main methods
     # person.project("id").display()
     # person.select(condition2).display()
 
     # Join methods
-    # person.cartesian_product(person_details).display()
-    # person.automatic_natural_join(person_details).display()
-    # person.natural_join(person_details, "id", "id").display()
-    # person.theta_join(person_details, "Person.id == PersonDetails.id").display()
-    # person.equi_join(person_details, "id", "id").display()
+    # join = person.cartesian_product(person_details)
+    # join = person.automatic_natural_join(person_details)
+    # join = person.natural_join(person_details, "id", "id")
+    # join = person.theta_join(person_details, condition3)
+    # join = person.equi_join(person_details, "id", "id")
+    #join.display()
 
+    # Outer join methods
+    # outer_join = person.outer_join(person_details, condition3)
+    # outer_join.display()
 
 
 if __name__ == "__main__":

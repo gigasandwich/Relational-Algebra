@@ -1,48 +1,48 @@
 from typing import List, Set
-from .column import Column
-from .row import Row
+from .column import Field
+from .row import Tuple
 
 class Relation:
     """
-    Represents a database relation with columns and rows, providing methods for data manipulation
+    Represents a database relation with fields and tuples, providing methods for data manipulation
     and relational algebra operations (e.g: projection, selection, joins, union/intersection/difference)
     """
 
     # ====================================================
     # Initialisation Method
     # ====================================================
-    def __init__(self, name: str, *columns: Column):
+    def __init__(self, name: str, *fields: Field):
         """
-        Initializes a relation with a name and any columns
+        Initializes a relation with a name and any fields
 
         Args:
             name (str): The name of the relation
-            *columns (Column): list of Column objects that has a name and a domain
+            *fields (Field): list of Field objects that has a name and a domain
 
         Raises:
-            ValueError: If there's no column
+            ValueError: If there's no field
         """
         self.name: str = name
-        self.columns: List[Column] = []
-        self.rows : List[Row] = []
+        self.fields: List[Field] = []
+        self.tuples : List[Tuple] = []
         
-        if columns is not None: 
-            for col in columns:
-                self.columns.append(col)
+        if fields is not None: 
+            for col in fields:
+                self.fields.append(col)
        
     # ====================================================
     # Main Methods
     # ====================================================
 
-    def insert(self, *args) -> "Row":
+    def insert(self, *args) -> "Tuple":
         """
-        Inserts a new row to the relation, it appends a new row in self.rows
+        Inserts a new row to the relation, it appends a new row in self.tuples
 
         Args:
-            *args: Column-value pairs (e.g: "column_name1", value1, "column_name2", value2)
+            *args: Column-value pairs (e.g: "field_name1", value1, "field_name2", value2)
 
         Raise:
-            ValueError: If the number of supposed number of columns are more than the number of column of the relation
+            ValueError: If the number of supposed number of fields are more than the number of column of the relation
             ValueError: If the number of arguments is odd the value doesn't match the domain of the Column object
             ValueError: If that row already exist
         """
@@ -51,43 +51,43 @@ class Relation:
         # Error handling
         args_length = len(args) # The number of passed argument
 
-        column_numbers = args_length/2 # The supposed number of columns passed as argument
-        normal_column_numbers = len(self.columns)
+        field_numbers = args_length/2 # The supposed number of fields passed as argument
+        normal_field_numbers = len(self.fields)
 
         # No excess of column
-        if(column_numbers > normal_column_numbers):
-            raise ValueError(f"Max column number: {normal_column_numbers}, however there are {column_numbers - normal_column_numbers} in the insert statement")
+        if(field_numbers > normal_field_numbers):
+            raise ValueError(f"Max column number: {normal_field_numbers}, however there are {field_numbers - normal_field_numbers} in the insert statement")
         
         # No column without value
         if args_length%2 != 0:
             raise ValueError(f"Expected: {args_length+1} arguments instead of just {args_length}")
 
-        row = Row(self)
+        row = Tuple(self)
         # Step 1: separating the pair of key-values
         for i in range(0, args_length, 2):
-            column_name = args[i]
+            field_name = args[i]
             value = args[i+1]
-            specific_column = self.get_column_by_name(column_name)
+            specific_column = self.get_field_by_name(field_name)
 
-            if row in self.rows:
+            if row in self.tuples:
                 raise ValueError("This row already exist")
 
             if specific_column is None:
-                raise ValueError(f"Column {column_name} doesn't exist")
+                raise ValueError(f"Column {field_name} doesn't exist")
 
             # Step 2: checking if each value inserted match the domain of the column
             if not specific_column.is_valid(value):
-                raise ValueError(f'Invalid value for column "{column_name}": {value}') # TODO: print the actual invalidity
+                raise ValueError(f'Invalid value for column "{field_name}": {value}') # TODO: print the actual invalidity
 
-            row.add_value(column_name, value)
+            row.add_value(field_name, value)
 
-        self.rows.append(row)
-        return Row(self)
+        self.tuples.append(row)
+        return Tuple(self)
 
 
     def project(self, *col_names: str) -> "Relation":
         """
-        Returns this relation with only the specified columns
+        Returns this relation with only the specified fields
 
         Raises: 
             ValueError: invalid column 
@@ -97,17 +97,17 @@ class Relation:
         # Step 1: Regrouping the Column objects that are requested
         needed_cols = []
         for col_name in col_names:
-            if new_relation.get_column_by_name(col_name) is None: 
+            if new_relation.get_field_by_name(col_name) is None: 
                 raise ValueError(f"Column {col_name} doesn't exist")
-            needed_cols.append(self.get_column_by_name(col_name))
+            needed_cols.append(self.get_field_by_name(col_name))
  
         # Step 2: Regrouping the Column objects that aren't needed
-        not_needed_cols = ( col for col in new_relation.columns if col not in needed_cols )
+        not_needed_cols = ( col for col in new_relation.fields if col not in needed_cols )
 
-        # Step 3: a copy of the original relation without the not needed columns (removing the mapping in the rows too)
+        # Step 3: a copy of the original relation without the not needed fields (removing the mapping in the tuples too)
         for not_needed_col in not_needed_cols:
-            new_relation.columns.remove(not_needed_col)
-            for row in new_relation.rows:
+            new_relation.fields.remove(not_needed_col)
+            for row in new_relation.tuples:
                 row.data.pop(not_needed_col.name)
 
         return new_relation
@@ -121,37 +121,37 @@ class Relation:
             ValueError: syntax error
         """
         copy = self.copy()
-        new_relation = Relation(f"{copy.name} where: {condition}", *copy.columns)
-        for row in copy.rows: 
+        new_relation = Relation(f"{copy.name} where: {condition}", *copy.fields)
+        for row in copy.tuples: 
             if row.evaluate_condition(condition):
-                new_relation.rows.append(row)
+                new_relation.tuples.append(row)
         return new_relation
     
     
     def cartesian_product(self, other: "Relation") -> "Relation":  
         # Copying to dodge pointer issue  
-        copied_self = self.copy_with_renamed_columns(self.name)
-        copied_other = other.copy_with_renamed_columns(other.name)
+        copied_self = self.copy_with_renamed_fields(self.name)
+        copied_other = other.copy_with_renamed_fields(other.name)
 
         result_relation = Relation(self.name + " x " + other.name)
         
-        for column in copied_self.columns:
-            result_relation.add_column(column)
+        for field in copied_self.fields:
+            result_relation.add_field(field)
 
-        for column in copied_other.columns:
-            result_relation.add_column(column)
+        for field in copied_other.fields:
+            result_relation.add_field(field)
 
-        for row1 in copied_self.rows:
-            for row2 in copied_other.rows:
-                combined_row = Row(result_relation)
+        for row1 in copied_self.tuples:
+            for row2 in copied_other.tuples:
+                combined_row = Tuple(result_relation)
                 
-                for column in copied_self.columns:
-                    combined_row.add_value(column.name, row1.data[column.name])
+                for field in copied_self.fields:
+                    combined_row.add_value(field.name, row1.data[field.name])
                 
-                for column in copied_other.columns:
-                    combined_row.add_value(column.name, row2.data[column.name])
+                for field in copied_other.fields:
+                    combined_row.add_value(field.name, row2.data[field.name])
                 
-                result_relation.add_row(combined_row)
+                result_relation.add_tuple(combined_row)
 
         return result_relation
 
@@ -166,23 +166,23 @@ class Relation:
         return new_relation
 
     def natural_join(self, other: "Relation") -> "Relation":
-        common_columns = [col.name for col in self.columns if col.name in [c.name for c in other.columns]]
+        common_fields = [col.name for col in self.fields if col.name in [c.name for c in other.fields]]
         cartesian_product = self.cartesian_product(other)
         condition = " and ".join(
-            [f"{self.name}.{col} == {other.name}.{col}" for col in common_columns]
+            [f"{self.name}.{col} == {other.name}.{col}" for col in common_fields]
         )
         selected_relation = cartesian_product.select(condition)
 
-        # Remove duplicate columns
+        # Remove duplicate fields
         result_relation = Relation(f"{self.name} NATURAL_JOIN {other.name}")
-        added_columns: Set[str] = set() 
-        for column in selected_relation.columns:
-            # Skip duplicate columns (from the second relation in common)
-            if column.name.split(".")[-1] not in added_columns:
-                result_relation.add_column(column)
-                added_columns.add(column.name.split(".")[-1]) 
+        added_fields: Set[str] = set() 
+        for field in selected_relation.fields:
+            # Skip duplicate fields (from the second relation in common)
+            if field.name.split(".")[-1] not in added_fields:
+                result_relation.add_field(field)
+                added_fields.add(field.name.split(".")[-1]) 
 
-        result_relation.rows = selected_relation.rows
+        result_relation.tuples = selected_relation.tuples
         return result_relation
 
 
@@ -194,40 +194,40 @@ class Relation:
     # Helper Methods
     # ====================================================
 
-    def get_column_by_name(self, name) -> Column: 
-        for column in self.columns:
-            if name == column.name:
-                return column
+    def get_field_by_name(self, name) -> Field: 
+        for field in self.fields:
+            if name == field.name:
+                return field
         return None
     
     def copy(self) -> "Relation":
-        new_relation = Relation(self.name, *self.columns.copy()) # Don't forget the * before self.columns.copy()
-        new_relation.rows = self.rows.copy()
+        new_relation = Relation(self.name, *self.fields.copy()) # Don't forget the * before self.fields.copy()
+        new_relation.tuples = self.tuples.copy()
         return new_relation
     
-    def copy_with_renamed_columns(self, prefix: str) -> "Relation":
+    def copy_with_renamed_fields(self, prefix: str) -> "Relation":
         new_relation = Relation(self.name)  
 
-        for column in self.columns:
-            new_column = Column(prefix + "." + column.name, domain = column.domain)
-            new_relation.add_column(new_column)
+        for field in self.fields:
+            new_field = Field(prefix + "." + field.name, domain = field.domain)
+            new_relation.add_field(new_field)
         
-        for row in self.rows:
+        for row in self.tuples:
             new_row = row.copy()
-            for column in self.columns:
-                old_column_name = column.name
-                new_column_name = prefix + "." + column.name
-                new_row.data[new_column_name] = new_row.data.pop(old_column_name)
+            for field in self.fields:
+                old_field_name = field.name
+                new_field_name = prefix + "." + field.name
+                new_row.data[new_field_name] = new_row.data.pop(old_field_name)
 
-            new_relation.add_row(new_row)
+            new_relation.add_tuple(new_row)
 
         return new_relation
 
-    def add_column(self, column: Column) -> None:
-        self.columns.append(column)
+    def add_field(self, field: Field) -> None:
+        self.fields.append(field)
 
-    def add_row(self, row: Row):
-        self.rows.append(row)
+    def add_tuple(self, tuple: Tuple):
+        self.tuples.append(tuple)
 
     # ====================================================
     # Display Methods
@@ -238,17 +238,17 @@ class Relation:
         The string representation of the relation and its components with an sql like form 
         """
         
-        if len(self.rows) == 0:
+        if len(self.tuples) == 0:
             return "Empty set"
         
-        col_names = [ col.name for col in self.columns]
+        col_names = [ col.name for col in self.fields]
         col_widths = []
 
         for col_name in col_names:
-            max_name_length = len(col_name) # Maximum length of the column name
-            max_value_length = max( (len(str(row.data.get(col_name, "")) ) for row in self.rows), default = 0) # Maximum length of the values in the column
+            max_name_length = len(col_name) # Maximum length of the field name
+            max_value_length = max( (len(str(row.data.get(col_name, "")) ) for row in self.tuples), default = 0) # Maximum length of the values in the field
 
-            # The column width is the larger between max_name and max_value
+            # The field width is the larger between max_name and max_value
             col_widths.append(max(max_name_length, max_value_length))
 
             # Create the horizontal border
@@ -257,13 +257,13 @@ class Relation:
             # The header row
             header = "| " + " |".join( col.ljust(width) for col, width in zip(col_names, col_widths)) + " |"
 
-            # The data rows
-            data_rows = ["| " + " |".join(str(row.data.get(col, "")).ljust(width) 
+            # The data tuples
+            data_tuples = ["| " + " |".join(str(row.data.get(col, "")).ljust(width) 
                         for col, width in zip(col_names, col_widths)) + " |" 
-                        for row in self.rows
+                        for row in self.tuples
             ]
 
-        return "\n".join([border, header, border] + data_rows + [border])
+        return "\n".join([border, header, border] + data_tuples + [border])
     
 
     def display(self) -> None: 

@@ -2,7 +2,7 @@ from __future__ import annotations # Solution to circular import: from ..base.re
 from typing import Dict, Any
 from ..condition.condition import simplify_and_evaluate
 
-class Row:
+class Tuple:
     """
     The real need of creating a relation: putting and stocking data into it
     """
@@ -17,13 +17,13 @@ class Row:
             data (dict): a dictionary/map relating the column name and the value it stores
 
         Args:
-            relation (Relation): so the row object could directly access columns and domains and other rows
+            relation (Relation): so the row object could directly access fields and domains and other rows
         """
         self.relation = relation
         self.data: Dict[str, Any] = {}
 
         # Putting all the data values "None" by default
-        for col in self.relation.columns:
+        for col in self.relation.fields:
             self.data[col.name] = None
 
     # ====================================================
@@ -43,8 +43,8 @@ class Row:
     def add_value(self, column_name: str, value: object):
         self.data[column_name] = value
 
-    def copy(self) -> "Row":
-        new_row = Row(self.relation)
+    def copy(self) -> "Tuple":
+        new_tuple = Tuple(self.relation)
         for column_name in self.data:
-            new_row.add_value(column_name, self.data[column_name])
-        return new_row
+            new_tuple.add_value(column_name, self.data[column_name])
+        return new_tuple

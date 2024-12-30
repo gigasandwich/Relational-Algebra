@@ -1,6 +1,6 @@
 from ..constraint.constraint import *  # Import all constraints from a single file
 from ..base.domain import Domain
-from ..base.column import Column
+from ..base.column import Field
 from ..base.relation import Relation
 
 def main():
@@ -16,9 +16,9 @@ def main():
     # Column Definitions
     # ====================================================
 
-    # Columns of the first relation (Person) 
+    # Fields of the first relation (Person) 
 
-    col1 = Column(
+    field1 = Field(
         name="id", 
         domain=Domain(
             allowed_values=[1, 2, 3, 4], 
@@ -27,7 +27,7 @@ def main():
         )
     )
     
-    col2 = Column(
+    field2 = Field(
         name="name", 
         domain=Domain(
             allowed_values=["Pupuce", "Japon", "Bocdom", "Stove", "Poyz", "Salohy"], 
@@ -35,16 +35,16 @@ def main():
         )
     )
     
-    # Columns of the second relation (PersonDetails) 
+    # Fields of the second relation (PersonDetails) 
 
-    col3 = Column(
+    field3 = Field(
         name="id", 
         domain=Domain(
             allowed_types=[int, str]
         )
     )
     
-    col4 = Column(
+    field4 = Field(
         name="age", 
         domain=Domain(
             allowed_types=[int], 
@@ -57,14 +57,14 @@ def main():
     # ====================================================
 
     # First relation
-    person = Relation("Person", col1, col2)
+    person = Relation("Person", field1, field2)
     person.insert("id", 1, "name", "Pupuce")  # Valid insertion
     """person.insert("id", 2, "name", "RAKOTOBE")  # Should raise an exception due to name length = 8 > 6"""
     person.insert("id", 3, "name", "Japon")  # Valid insertion
     person.insert("id", "20", "name", "Salohy")  # Valid insertion (id as string)
 
     # Second relation
-    person_details = Relation("PersonDetails", col3, col4)
+    person_details = Relation("PersonDetails", field3, field4)
     person_details.insert("id", 1, "age", 16)  # Valid insertion
     """person_details.insert("id", 2, "age", 38)  # Should raise an exception due to age > 32"""
     person_details.insert("id", 3, "age", 20)  # Valid insertion

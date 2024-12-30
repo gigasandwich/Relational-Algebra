@@ -1,6 +1,6 @@
 from .domain import Domain
 
-class Column:
+class Field:
     """
     The main components of a relation
     It has a name and a domain
@@ -15,8 +15,8 @@ class Column:
         If there's no domain added, by default the domain will be composed of any object
 
         Args:
-            name (str): The name which we will identify the column from others in a relation
-            domain (Domain): The domain object which the future rows will follow its rules 
+            name (str): The name which we will identify the field from others in a relation
+            domain (Domain): The domain object which the future tuple will follow its rules 
             All the other arguments of a domain object constructor (optionals)
 
         Raises:
@@ -26,7 +26,7 @@ class Column:
         self.domain = domain if domain is not None else Domain(allowed_types, allowed_values, constraints)
 
         if domain is None:
-            raise ValueError("A column must have a domain")
+            raise ValueError("A field must have a domain")
 
     # ====================================================
     # Main Methods
@@ -35,22 +35,22 @@ class Column:
     def is_valid(self, value: object) -> bool:
         return self.domain.is_valid(value)
     
-    def union(self, other_column):
-        domain = self.domain.union(other_column.domain)
-        new_name = f"{self.name}|{other_column.name}"
-        return Column(new_name, domain)
+    def union(self, other_field):
+        domain = self.domain.union(other_field.domain)
+        new_name = f"{self.name}|{other_field.name}"
+        return Field(new_name, domain)
     
-    def intersection(self, other_column):
-        domain = self.domain.intersection(other_column.domain)
-        new_name = f"{self.name}|{other_column.name}"
-        return Column(new_name, domain)
+    def intersection(self, other_field):
+        domain = self.domain.intersection(other_field.domain)
+        new_name = f"{self.name}|{other_field.name}"
+        return Field(new_name, domain)
     
     # ====================================================
     # Display Methods
     # ====================================================
 
     def __str__(self):
-        return f"Column(name={self.name}, domain={self.domain})"
+        return f"Field(name={self.name}, domain={self.domain})"
 
     def display(self):
         print(self)

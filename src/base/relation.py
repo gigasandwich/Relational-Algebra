@@ -97,9 +97,17 @@ class Relation:
             ValueError: invalid column 
         """
         new_relation = self.copy() # Creating a copy to evit pointer errors
+        new_relation.name = f"{self.name} PROJECTED {col_names}"
         
+            
+
         # Step 1: Regrouping the Column objects that are requested
         needed_cols = []
+
+        if "*" in col_names:
+            col_names = set(col_names)
+            col_names = (field.name for field in self.fields)
+
         for col_name in col_names:
             if new_relation.get_field_by_name(col_name) is None: 
                 raise ValueError(f"Column {col_name} doesn't exist")
@@ -125,7 +133,7 @@ class Relation:
             ValueError: syntax error
         """
         copy = self.copy()
-        new_relation = Relation(f"{copy.name} where: {condition}", *copy.fields)
+        new_relation = Relation(f"{copy.name} WHERE: {condition}", *copy.fields)
         for row in copy.tuples: 
             if row.evaluate_condition(condition):
                 new_relation.tuples.append(row)
@@ -151,7 +159,7 @@ class Relation:
                 
                 for field in copied_self.fields:
                     combined_tuple.add_value(field.name, tuple1.data[field.name])
-                
+        
                 for field in copied_other.fields:
                     combined_tuple.add_value(field.name, tuple2.data[field.name])
                 
@@ -166,7 +174,7 @@ class Relation:
     def theta_join(self, other: "Relation", condition: str) -> "Relation":
         cartesian_product = self.cartesian_product(other)
         new_relation = cartesian_product.select(condition)
-        new_relation.name = self.name + " THETA_JOIN "  + other.name
+        new_relation.name = self.name + " THETA JOIN "  + other.name
         return new_relation
 
 
@@ -181,7 +189,7 @@ class Relation:
         # Keep the tuple ONLY if field from self is equal to field from other
         condition = " and ".join( f"{self.name}.{common_fields[i]} == {other.name}.{common_fields[i+1]}" for i in range(0, len(common_fields), 2))
         new_relation = self.cartesian_product(other).select(condition)
-        new_relation.name = f"{self.name} natural_join {other.name}: {common_fields}"
+        new_relation.name = f"{self.name} NATURAL JOIN {other.name}: {common_fields}"
 
         # Remove duplicate columns from the second relation
         for i in range(0, len(common_fields), 2):
@@ -204,7 +212,7 @@ class Relation:
         selected_relation = cartesian_product.select(condition)
 
         # Remove duplicate fields
-        new_relation = Relation(f"{self.name} NATURAL_JOIN {other.name}")
+        new_relation = Relation(f"{self.name} NATURAL JOIN {other.name}")
         added_fields = set()
         for field in selected_relation.fields:
             # Skip duplicate fields (from the second relation in common)
@@ -230,11 +238,9 @@ class Relation:
     # TODO: Arg of add_unmatched_rows: not theta_join but condition of the theta_join, but it destroys the logic of the algorithm
 
     def outer_join(self, other: "Relation", condition: str) -> "Relation":
-        """
-        Performs a full outer join between two relations based on a condition.
-        """
         theta_join = self.theta_join(other, condition)
         
+        # Using these so that there's automaticaly a prefix before column names
         self_relation = self.copy_with_renamed_fields(self.name)
         other_relation = other.copy_with_renamed_fields(other.name)
 
@@ -245,13 +251,9 @@ class Relation:
         # Handle unmatched rows from both sides
         result_relation.add_unmatched_rows(self_relation, other_relation, theta_join)
         result_relation.add_unmatched_rows(other_relation, self_relation, theta_join)
-
         return result_relation
 
     def left_outer_join(self, other: "Relation", condition: str) -> "Relation":
-        """
-        Performs a left outer join between two relations based on a condition.
-        """
         theta_join = self.theta_join(other, condition)
         
         self_relation = self.copy_with_renamed_fields(self.name)
@@ -263,7 +265,6 @@ class Relation:
 
         # Handle unmatched rows from the left side only
         result_relation.add_unmatched_rows(self_relation, other_relation, theta_join)
-
         return result_relation
 
     def right_outer_join(self, other: "Relation", condition: str) -> "Relation":
@@ -356,7 +357,7 @@ class Relation:
                     for field in primary_relation.fields
                 ):
                     matched = True
-                    break  # If a match is found, no need to check further
+                    break  
 
             # If no match was found, add to unmatched_rows
             if not matched:
@@ -365,12 +366,11 @@ class Relation:
         # Process unmatched rows
         for row in unmatched_rows:
             new_row = Tuple(self)
-            # Add values from the primary relation
+
             for field in primary_relation.fields:
-                new_row.data[f"{field.name}"] = row.data[field.name]
-            # Set None for fields in the secondary relation
+                new_row.data[field.name] = row.data[field.name]
             for field in secondary_relation.fields:
-                new_row.data[f"{field.name}"] = None
+                new_row.data[field.name] = None
 
             self.add_tuple(new_row)
 

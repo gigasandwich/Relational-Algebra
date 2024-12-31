@@ -85,7 +85,7 @@ def main():
     condition3 = "Person.id == PersonDetails.id"
     
     # Relation main methods
-    # person.project("id").display()
+    # person.project("*").display()
     # person.select(condition2).display()
 
     # Join methods
@@ -99,8 +99,8 @@ def main():
     # Outer join methods
     # outer_join = person.outer_join(person_details, condition3)
     # outer_join = person.left_outer_join(person_details, condition3)
-    outer_join = person.right_outer_join(person_details, condition3)
-    outer_join.display()
+    # outer_join = person.right_outer_join(person_details, condition3)
+    # outer_join.display()
 
 
 if __name__ == "__main__":

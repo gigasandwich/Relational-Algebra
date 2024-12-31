@@ -94,11 +94,12 @@ def main():
     # join = person.natural_join(person_details, "id", "id")
     # join = person.theta_join(person_details, condition3)
     # join = person.equi_join(person_details, "id", "id")
-    #join.display()
+    # join.display()
 
     # Outer join methods
     # outer_join = person.outer_join(person_details, condition3)
-    # outer_join.display()
+    outer_join = person.right_outer_join(person_details, condition3)
+    outer_join.display()
 
 
 if __name__ == "__main__":

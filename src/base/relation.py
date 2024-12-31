@@ -232,41 +232,65 @@ class Relation:
         """
         Performs a full outer join between two relations based on a condition.
         """
-        # Perform a cartesian product and filter based on the condition
-        cartesian_product = self.cartesian_product(other)
-        matched = cartesian_product.select(condition)
+        theta_join = self.theta_join(other, condition)
         
-        # Create the resulting relation
+        self_relation = self.copy_with_renamed_fields(self.name)
+        other_relation = other.copy_with_renamed_fields(other.name)
+
         result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
-        result_relation.fields = cartesian_product.fields
+        result_relation.fields = self_relation.fields + other_relation.fields  
 
-        # Add matched tuples
-        result_relation.tuples.extend(matched.tuples)
+        # Add matched tuples from the condition of the theta join
+        result_relation.tuples.extend(theta_join.tuples)
 
-        # Identify unmatched rows from the left relation
-        unmatched_left = [
-            row for row in self.tuples
-            if not any(matched_row.matches(row, self.fields) for matched_row in matched.tuples)
-        ]
+        # Identify unmatched rows from the left relation (self)
+        unmatched_left = []
+        for row in self_relation.tuples:
+            # Check if the row from self matches any row from the theta_join
+            matched = False
+            for matched_row in theta_join.tuples:
+                if all(
+                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
+                    for field in self_relation.fields
+                ):
+                    matched = True
+                    break
+            if not matched:
+                unmatched_left.append(row)
+
         for row in unmatched_left:
             new_row = Tuple(result_relation)
-            for field in self.fields:
-                new_row.data[f"{self.name}.{field.name}"] = row.data[field.name]
-            for field in other.fields:
-                new_row.data[f"{other.name}.{field.name}"] = None  # Fill unmatched columns with None
+            # Add the values from the left relation (self)
+            for field in self_relation.fields:
+                new_row.data[f"{field.name}"] = row.data[field.name]
+            # Set None for the unmatched columns from the right relation (other)
+            for field in other_relation.fields:
+                new_row.data[f"{field.name}"] = None
             result_relation.add_tuple(new_row)
 
-        # Identify unmatched rows from the right relation
-        unmatched_right = [
-            row for row in other.tuples
-            if not any(matched_row.matches(row, other.fields) for matched_row in matched.tuples)
-        ]
+        # Identify unmatched rows from the right relation (other)
+        unmatched_right = []
+        for row in other_relation.tuples:
+            # Check if the row from other matches any row from the theta_join
+            matched = False
+            for matched_row in theta_join.tuples:
+                if all(
+                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
+                    for field in other_relation.fields
+                ):
+                    matched = True
+                    break
+            if not matched:
+                unmatched_right.append(row)
+
         for row in unmatched_right:
             new_row = Tuple(result_relation)
-            for field in self.fields:
-                new_row.data[f"{self.name}.{field.name}"] = None  # Fill unmatched columns with None
-            for field in other.fields:
-                new_row.data[f"{other.name}.{field.name}"] = row.data[field.name]
+            # Set None for the unmatched columns from the left relation (self)
+            for field in self_relation.fields:
+                new_row.data[f"{field.name}"] = None
+            # Add the values from the right relation (other)
+            for field in other_relation.fields:
+                new_row.data[f"{field.name}"] = row.data[field.name]
             result_relation.add_tuple(new_row)
 
         return result_relation
@@ -275,40 +299,94 @@ class Relation:
 
     def left_outer_join(self, other: "Relation", condition: str) -> "Relation":
         """
-        Performs a left outer join between two relations based on a condition.
+        Performs a full outer join between two relations based on a condition.
         """
-        # Perform a cartesian product with prefixed fields
-        cartesian_product = self.cartesian_product(other)
-        matched = cartesian_product.select(condition)
+        theta_join = self.theta_join(other, condition)
         
-        result_relation = Relation(f"{self.name} LEFT OUTER JOIN {other.name}")
-        result_relation.fields = cartesian_product.fields
+        self_relation = self.copy_with_renamed_fields(self.name)
+        other_relation = other.copy_with_renamed_fields(other.name)
 
-        # Add matched tuples
-        result_relation.tuples.extend(matched.tuples)
+        result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
+        result_relation.fields = self_relation.fields + other_relation.fields
 
-        # Add unmatched tuples from the left relation
-        left_only = [
-            row for row in self.tuples
-            if not any(row.equals(other_row) for other_row in matched.tuples)
-        ]
-        for row in left_only:
+        # Add matched tuples from the theta join
+        result_relation.tuples.extend(theta_join.tuples)
+
+        # Identify unmatched rows from the left relation (self)
+        unmatched_left = []
+        for row in self_relation.tuples:
+            # Check if the row from self matches any row from the theta_join
+            matched = False
+            for matched_row in theta_join.tuples:
+                if all(
+                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
+                    for field in self_relation.fields
+                ):
+                    matched = True
+                    break
+            if not matched:
+                unmatched_left.append(row)
+
+        for row in unmatched_left:
             new_row = Tuple(result_relation)
-            for field in self.fields:
-                new_row.data[field.name] = row.data[field.name]
-            for field in other.fields:
-                new_row.data[field.name] = None  # Fill unmatched columns with None
+            # Add the values from the left relation (self)
+            for field in self_relation.fields:
+                new_row.data[f"{field.name}"] = row.data[field.name]
+            # Set None for the unmatched columns from the right relation (other)
+            for field in other_relation.fields:
+                new_row.data[f"{field.name}"] = None
             result_relation.add_tuple(new_row)
 
         return result_relation
 
 
+    """
+    The problem with this method is the order of the columns (Reality: the other goes first. Expectation: should be the opposite)
+    """
     def right_outer_join(self, other: "Relation", condition: str) -> "Relation":
-        """
-        Performs a right outer join between two relations based on a condition.
-        """
         return other.left_outer_join(self, condition)
 
+    def right_outer_join(self, other: "Relation", condition: str) -> "Relation":
+
+        # Perform a theta join based on the provided condition
+        theta_join = self.theta_join(other, condition)
+        
+        self_relation = self.copy_with_renamed_fields(self.name)
+        other_relation = other.copy_with_renamed_fields(other.name)
+
+        # Create the resulting relation
+        result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
+        result_relation.fields = self_relation.fields + other_relation.fields  # Combine the fields from both relations
+
+        # Add matched tuples from the theta join
+        result_relation.tuples.extend(theta_join.tuples)
+
+        # Identify unmatched rows from the right relation (other)
+        unmatched_right = []
+        for row in other_relation.tuples:
+            # Check if the row from other matches any row from the theta_join
+            matched = False
+            for matched_row in theta_join.tuples:
+                if all(
+                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
+                    for field in other_relation.fields
+                ):
+                    matched = True
+                    break
+            if not matched:
+                unmatched_right.append(row)
+
+        for row in unmatched_right:
+            new_row = Tuple(result_relation)
+            # Set None for the unmatched columns from the left relation (self)
+            for field in self_relation.fields:
+                new_row.data[f"{field.name}"] = None
+            # Add the values from the right relation (other)
+            for field in other_relation.fields:
+                new_row.data[f"{field.name}"] = row.data[field.name]
+            result_relation.add_tuple(new_row)
+
+        return result_relation
 
     
     # ====================================================
@@ -406,7 +484,7 @@ class Relation:
 
         data_tuples = [
             "| " + " | ".join(
-                str(row.data.get(field, "")).ljust(width) for field, width in zip(field_names, field_widths)
+                str(repr(row.data.get(field, ""))).ljust(width) for field, width in zip(field_names, field_widths) # Add repr method to row.data.get() to precise the datatype
             ) + " |"
             for row in self.tuples
         ]

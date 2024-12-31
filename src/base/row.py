@@ -43,8 +43,8 @@ class Tuple:
         """
         for field in fields:
             # Fully qualified names to handle prefixes
-            self_value = self.data.get(f"{self.relation.name}.{field.name}")
-            other_value = other_tuple.data.get(f"{other_tuple.relation.name}.{field.name}")
+            self_value = self.data[f"{self.relation.name}.{field.name}"]
+            other_value = other_tuple.data[f"{other_tuple.relation.name}.{field.name}"]
             
             if self_value != other_value:
                 return False
@@ -62,3 +62,10 @@ class Tuple:
         for column_name in self.data:
             new_tuple.add_value(column_name, self.data[column_name])
         return new_tuple
+    
+    # ====================================================
+    # Display Methods
+    # ====================================================
+    
+    def __str__(self):
+        return f"Relation: {self.relation.name}, data: {self.data}"

@@ -227,6 +227,7 @@ class Relation:
     # ====================================================
     # Outter join methods
     # ====================================================
+    # TODO: Arg of add_unmatched_rows: not theta_join but condition of the theta_join, but it destroys the logic of the algorithm
 
     def outer_join(self, other: "Relation", condition: str) -> "Relation":
         """
@@ -239,155 +240,48 @@ class Relation:
 
         result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
         result_relation.fields = self_relation.fields + other_relation.fields  
-
-        # Add matched tuples from the condition of the theta join
         result_relation.tuples.extend(theta_join.tuples)
 
-        # Identify unmatched rows from the left relation (self)
-        unmatched_left = []
-        for row in self_relation.tuples:
-            # Check if the row from self matches any row from the theta_join
-            matched = False
-            for matched_row in theta_join.tuples:
-                if all(
-                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
-                    for field in self_relation.fields
-                ):
-                    matched = True
-                    break
-            if not matched:
-                unmatched_left.append(row)
-
-        for row in unmatched_left:
-            new_row = Tuple(result_relation)
-            # Add the values from the left relation (self)
-            for field in self_relation.fields:
-                new_row.data[f"{field.name}"] = row.data[field.name]
-            # Set None for the unmatched columns from the right relation (other)
-            for field in other_relation.fields:
-                new_row.data[f"{field.name}"] = None
-            result_relation.add_tuple(new_row)
-
-        # Identify unmatched rows from the right relation (other)
-        unmatched_right = []
-        for row in other_relation.tuples:
-            # Check if the row from other matches any row from the theta_join
-            matched = False
-            for matched_row in theta_join.tuples:
-                if all(
-                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
-                    for field in other_relation.fields
-                ):
-                    matched = True
-                    break
-            if not matched:
-                unmatched_right.append(row)
-
-        for row in unmatched_right:
-            new_row = Tuple(result_relation)
-            # Set None for the unmatched columns from the left relation (self)
-            for field in self_relation.fields:
-                new_row.data[f"{field.name}"] = None
-            # Add the values from the right relation (other)
-            for field in other_relation.fields:
-                new_row.data[f"{field.name}"] = row.data[field.name]
-            result_relation.add_tuple(new_row)
+        # Handle unmatched rows from both sides
+        result_relation.add_unmatched_rows(self_relation, other_relation, theta_join)
+        result_relation.add_unmatched_rows(other_relation, self_relation, theta_join)
 
         return result_relation
-
-
 
     def left_outer_join(self, other: "Relation", condition: str) -> "Relation":
         """
-        Performs a full outer join between two relations based on a condition.
+        Performs a left outer join between two relations based on a condition.
         """
         theta_join = self.theta_join(other, condition)
         
         self_relation = self.copy_with_renamed_fields(self.name)
         other_relation = other.copy_with_renamed_fields(other.name)
 
-        result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
+        result_relation = Relation(f"{self.name} LEFT OUTER JOIN {other.name}")
         result_relation.fields = self_relation.fields + other_relation.fields
-
-        # Add matched tuples from the theta join
         result_relation.tuples.extend(theta_join.tuples)
 
-        # Identify unmatched rows from the left relation (self)
-        unmatched_left = []
-        for row in self_relation.tuples:
-            # Check if the row from self matches any row from the theta_join
-            matched = False
-            for matched_row in theta_join.tuples:
-                if all(
-                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
-                    for field in self_relation.fields
-                ):
-                    matched = True
-                    break
-            if not matched:
-                unmatched_left.append(row)
-
-        for row in unmatched_left:
-            new_row = Tuple(result_relation)
-            # Add the values from the left relation (self)
-            for field in self_relation.fields:
-                new_row.data[f"{field.name}"] = row.data[field.name]
-            # Set None for the unmatched columns from the right relation (other)
-            for field in other_relation.fields:
-                new_row.data[f"{field.name}"] = None
-            result_relation.add_tuple(new_row)
+        # Handle unmatched rows from the left side only
+        result_relation.add_unmatched_rows(self_relation, other_relation, theta_join)
 
         return result_relation
 
-
-    """
-    The problem with this method is the order of the columns (Reality: the other goes first. Expectation: should be the opposite)
-    """
     def right_outer_join(self, other: "Relation", condition: str) -> "Relation":
-        return other.left_outer_join(self, condition)
-
-    def right_outer_join(self, other: "Relation", condition: str) -> "Relation":
-
-        # Perform a theta join based on the provided condition
+        """
+        Performs a right outer join between two relations based on a condition.
+        """
         theta_join = self.theta_join(other, condition)
         
         self_relation = self.copy_with_renamed_fields(self.name)
         other_relation = other.copy_with_renamed_fields(other.name)
 
-        # Create the resulting relation
-        result_relation = Relation(f"{self.name} FULL OUTER JOIN {other.name}")
-        result_relation.fields = self_relation.fields + other_relation.fields  # Combine the fields from both relations
-
-        # Add matched tuples from the theta join
+        result_relation = Relation(f"{self.name} LEFT OUTER JOIN {other.name}")
+        result_relation.fields = self_relation.fields + other_relation.fields
         result_relation.tuples.extend(theta_join.tuples)
 
-        # Identify unmatched rows from the right relation (other)
-        unmatched_right = []
-        for row in other_relation.tuples:
-            # Check if the row from other matches any row from the theta_join
-            matched = False
-            for matched_row in theta_join.tuples:
-                if all(
-                    row.data[f"{field.name}"] == matched_row.data[f"{field.name}"]
-                    for field in other_relation.fields
-                ):
-                    matched = True
-                    break
-            if not matched:
-                unmatched_right.append(row)
-
-        for row in unmatched_right:
-            new_row = Tuple(result_relation)
-            # Set None for the unmatched columns from the left relation (self)
-            for field in self_relation.fields:
-                new_row.data[f"{field.name}"] = None
-            # Add the values from the right relation (other)
-            for field in other_relation.fields:
-                new_row.data[f"{field.name}"] = row.data[field.name]
-            result_relation.add_tuple(new_row)
-
+        # Handle unmatched rows from the left side only
+        result_relation.add_unmatched_rows(other_relation, self_relation, theta_join)
         return result_relation
-
     
     # ====================================================
     # Helper Methods
@@ -411,14 +305,14 @@ class Relation:
             new_field = Field(prefix + "." + field.name, domain = field.domain)
             new_relation.add_field(new_field)
         
-        for row in self.tuples:
-            new_row = row.copy()
+        for tuple in self.tuples:
+            new_tuple = tuple.copy()
             for field in self.fields:
                 old_field_name = field.name
                 new_field_name = prefix + "." + field.name
-                new_row.data[new_field_name] = new_row.data.pop(old_field_name)
+                new_tuple.data[new_field_name] = new_tuple.data.pop(old_field_name)
 
-            new_relation.add_tuple(new_row)
+            new_relation.add_tuple(new_tuple)
 
         return new_relation
 
@@ -445,6 +339,41 @@ class Relation:
             if tuple.equals(other_tuple):
                 return True 
         return False
+    
+    def add_unmatched_rows(self, primary_relation, secondary_relation, theta_join):
+        """
+        Adds unmatched rows from one relation (primary_relation) to self.
+        Sets None for the fields from the secondary_relation.
+        """
+        unmatched_rows = []
+
+        for row in primary_relation.tuples:
+            matched = False
+            # Check if the row matches any row in theta_join
+            for matched_row in theta_join.tuples:
+                if all(
+                    row.data[field.name] == matched_row.data[field.name]
+                    for field in primary_relation.fields
+                ):
+                    matched = True
+                    break  # If a match is found, no need to check further
+
+            # If no match was found, add to unmatched_rows
+            if not matched:
+                unmatched_rows.append(row)
+
+        # Process unmatched rows
+        for row in unmatched_rows:
+            new_row = Tuple(self)
+            # Add values from the primary relation
+            for field in primary_relation.fields:
+                new_row.data[f"{field.name}"] = row.data[field.name]
+            # Set None for fields in the secondary relation
+            for field in secondary_relation.fields:
+                new_row.data[f"{field.name}"] = None
+
+            self.add_tuple(new_row)
+
 
     def add_field(self, field: Field) -> None:
         self.fields.append(field)
@@ -469,7 +398,7 @@ class Relation:
         for field_name in field_names:
             max_name_length = len(field_name) 
             max_value_length = max(
-                (len(str(row.data.get(field_name, ""))) for row in self.tuples), 
+                (len(repr(str(tuple.data.get(field_name, "")))) for tuple in self.tuples), # Add repr method to tuple.data.get() to precise the datatype
                 default=0
             ) 
 
@@ -484,9 +413,9 @@ class Relation:
 
         data_tuples = [
             "| " + " | ".join(
-                str(repr(row.data.get(field, ""))).ljust(width) for field, width in zip(field_names, field_widths) # Add repr method to row.data.get() to precise the datatype
+                str(repr(tuple.data.get(field, ""))).ljust(width) for field, width in zip(field_names, field_widths) 
             ) + " |"
-            for row in self.tuples
+            for tuple in self.tuples
         ]
 
         return "\n".join([border, header, border] + data_tuples + [border])

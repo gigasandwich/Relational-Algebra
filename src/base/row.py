@@ -36,19 +36,7 @@ class Tuple:
             condition = condition.replace(column_name, repr(value))
         return simplify_and_evaluate(condition)
     
-    def matches(self, other_tuple, fields):
-        """
-        Checks if the current tuple matches another tuple based on the provided fields.
-        A match occurs when all values for the shared fields are equal.
-        """
-        for field in fields:
-            # Fully qualified names to handle prefixes
-            self_value = self.data[f"{self.relation.name}.{field.name}"]
-            other_value = other_tuple.data[f"{other_tuple.relation.name}.{field.name}"]
-            
-            if self_value != other_value:
-                return False
-        return True
+    
 
     # ====================================================
     # Helper Methods

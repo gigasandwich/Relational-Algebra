@@ -98,6 +98,7 @@ def main():
 
     # Outer join methods
     # outer_join = person.outer_join(person_details, condition3)
+    # outer_join = person.left_outer_join(person_details, condition3)
     outer_join = person.right_outer_join(person_details, condition3)
     outer_join.display()
 

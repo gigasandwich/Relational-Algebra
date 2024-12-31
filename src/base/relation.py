@@ -284,6 +284,137 @@ class Relation:
         result_relation.add_unmatched_rows(other_relation, self_relation, theta_join)
         return result_relation
     
+
+    # ====================================================
+    # Union - Intersection - Difference Methods
+    # ====================================================
+    
+    def union(self, other: "Relation", field_mapping: dict) -> "Relation":
+        """
+        Performs a union operation on two relations using the specified field mapping.
+        The result only includes fields specified in the field_mapping.
+        """
+        # Validate field_mapping
+        for self_field, other_field in field_mapping.items():
+            if self_field not in [f.name for f in self.fields]:
+                raise ValueError(f"Field '{self_field}' not found in '{self.name}'.")
+            if other_field not in [f.name for f in other.fields]:
+                raise ValueError(f"Field '{other_field}' not found in '{other.name}'.")
+
+        # Create a new relation with fields specified in field_mapping
+        result_fields = [
+            Field(name, self.get_field_by_name(name).domain.union(other.get_field_by_name(field_mapping[name]).domain))
+            for name in field_mapping.keys()
+        ]
+        new_relation = Relation(f"{self.name}_UNION_{other.name}", *result_fields)
+
+        # Helper to construct tuples based on field_mapping
+        def construct_tuple(source_relation, row, field_mapping):
+            new_tuple = Tuple(new_relation)
+            for self_field, other_field in field_mapping.items():
+                new_tuple.data[self_field] = row.data[other_field]
+            return new_tuple
+
+        # Add tuples from both relations, ensuring no duplicates
+        added_tuples = set()  # Keep track of added tuples for deduplication
+        for row in self.tuples:
+            new_tuple = construct_tuple(self, row, field_mapping)
+            tuple_key = tuple(new_tuple.data.values())  # Generate a hashable key for deduplication
+            if tuple_key not in added_tuples:
+                new_relation.add_tuple(new_tuple)
+                added_tuples.add(tuple_key)
+
+        for row in other.tuples:
+            new_tuple = construct_tuple(other, row, field_mapping)
+            tuple_key = tuple(new_tuple.data.values())  # Generate a hashable key for deduplication
+            if tuple_key not in added_tuples:
+                new_relation.add_tuple(new_tuple)
+                added_tuples.add(tuple_key)
+
+        return new_relation
+
+
+    def intersection(self, other: "Relation", field_mapping: dict) -> "Relation":
+        """
+        Performs an intersection operation on two relations using the specified field mapping.
+        The result only includes fields specified in the field_mapping.
+        """
+        # Validate field_mapping
+        for self_field, other_field in field_mapping.items():
+            if self_field not in [f.name for f in self.fields]:
+                raise ValueError(f"Field '{self_field}' not found in '{self.name}'.")
+            if other_field not in [f.name for f in other.fields]:
+                raise ValueError(f"Field '{other_field}' not found in '{other.name}'.")
+
+        # Create a new relation with fields specified in field_mapping
+        result_fields = [
+            Field(name, self.get_field_by_name(name).domain.intersection(other.get_field_by_name(field_mapping[name]).domain))
+            for name in field_mapping.keys()
+        ]
+        new_relation = Relation(f"{self.name}_INTERSECTION_{other.name}", *result_fields)
+
+        # Helper to construct tuples based on field_mapping
+        def construct_tuple(source_relation, row, field_mapping):
+            new_tuple = Tuple(new_relation)
+            for self_field, other_field in field_mapping.items():
+                new_tuple.data[self_field] = row.data[other_field]
+            return new_tuple
+
+        # Add tuples that exist in both relations
+        other_tuples_set = {
+            tuple(construct_tuple(other, row, field_mapping).data.values()) for row in other.tuples
+        }
+
+        for row in self.tuples:
+            new_tuple = construct_tuple(self, row, field_mapping)
+            tuple_key = tuple(new_tuple.data.values())
+            if tuple_key in other_tuples_set:
+                new_relation.add_tuple(new_tuple)
+
+        return new_relation
+
+
+    def difference(self, other: "Relation", field_mapping: dict) -> "Relation":
+        """
+        Performs a difference operation (self - other) on two relations using the specified field mapping.
+        The result only includes fields specified in the field_mapping.
+        """
+        # Validate field_mapping
+        for self_field, other_field in field_mapping.items():
+            if self_field not in [f.name for f in self.fields]:
+                raise ValueError(f"Field '{self_field}' not found in '{self.name}'.")
+            if other_field not in [f.name for f in other.fields]:
+                raise ValueError(f"Field '{other_field}' not found in '{other.name}'.")
+
+        # Create a new relation with fields specified in field_mapping
+        result_fields = [
+            Field(name, self.get_field_by_name(name).domain.difference(other.get_field_by_name(field_mapping[name]).domain))
+            for name in field_mapping.keys()
+        ]
+        new_relation = Relation(f"{self.name}_DIFFERENCE_{other.name}", *result_fields)
+
+        # Helper to construct tuples based on field_mapping
+        def construct_tuple(source_relation, row, field_mapping):
+            new_tuple = Tuple(new_relation)
+            for self_field, other_field in field_mapping.items():
+                new_tuple.data[self_field] = row.data[other_field]
+            return new_tuple
+
+        # Add tuples that exist in self but not in other
+        other_tuples_set = {
+            tuple(construct_tuple(other, row, field_mapping).data.values()) for row in other.tuples
+        }
+
+        for row in self.tuples:
+            new_tuple = construct_tuple(self, row, field_mapping)
+            tuple_key = tuple(new_tuple.data.values())
+            if tuple_key not in other_tuples_set:
+                new_relation.add_tuple(new_tuple)
+
+        return new_relation
+
+
+
     # ====================================================
     # Helper Methods
     # ====================================================

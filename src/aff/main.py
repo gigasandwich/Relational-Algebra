@@ -102,6 +102,24 @@ def main():
     # outer_join = person.right_outer_join(person_details, condition3)
     # outer_join.display()
 
+    # ====================================================
+    # Relational Algebra Operations
+    # ====================================================
+    field_mapping = {"id": "id"}
+
+    print("\n=== Union of Person and PersonDetails ===")
+    union_result = person.union(person_details, field_mapping)
+    union_result.display()
+
+    print("\n=== Intersection of Person and PersonDetails ===")
+    intersection_result = person.intersection(person_details, field_mapping)
+    intersection_result.display()
+
+    print("\n=== Difference of Person and PersonDetails ===")
+    difference_result = person.difference(person_details, field_mapping)
+    difference_result.display()
+
+
 
 if __name__ == "__main__":
     main()

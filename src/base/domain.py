@@ -60,24 +60,36 @@ class Domain:
 
     
 
-    def union(self, other: "Domain"):
-        """
-        Note: There's no duplicate value
-        """
-        allowed_types = self.allowed_types | other.allowed_types
-        allowed_values = self.allowed_values | other.allowed_values
-        constraints = self.constraints | other.constraints
+    def union(self, other: "Domain") -> "Domain":
+        allowed_values = list(set(self.allowed_values) | set(other.allowed_values))
+        allowed_types = list(set(self.allowed_types) | set(other.allowed_types))
+        constraints = self.merge_constraints(other, "union")
+        return Domain(allowed_values, allowed_types, constraints)
 
-        return Domain(allowed_types, allowed_values, constraints)
+    def intersection(self, other: "Domain") -> "Domain":
+        allowed_values = list(set(self.allowed_values) & set(other.allowed_values))
+        allowed_types = list(set(self.allowed_types) & set(other.allowed_types))
+        constraints = self.merge_constraints(other, "intersection")
+        return Domain(allowed_values, allowed_types, constraints)
+
+    def difference(self, other: "Domain") -> "Domain":
+        allowed_values = list(set(self.allowed_values) - set(other.allowed_values))
+        allowed_types = list(set(self.allowed_types) - set(other.allowed_types))
+        constraints = self.merge_constraints(other, "difference")
+        return Domain(allowed_values, allowed_types, constraints)
+
+    def merge_constraints(self, other: "Domain", operation: str) -> List[Constraint]:
+        merged_constraints = []
+        for c1 in self.constraints:
+            for c2 in other.constraints:
+                if isinstance(c1, type(c2)):
+                    if operation == "union":
+                        merged_constraints.append(c1.union(c2))
+                    elif operation == "intersection":
+                        merged_constraints.append(c1.intersection(c2))
+                    elif operation == "difference":
+                        merged_constraints.append(c1.difference(c2))
+        return merged_constraints
     
-
-    def intersection(self, other: "Domain"):
-        """
-        Note: There's also no duplicate value
-        """
-        allowed_types = self.allowed_types & other.allowed_types        
-        allowed_values = self.allowed_values & other.allowed_values 
-        constraints = self.constraints & other.constraints
-
-        return Domain(allowed_types, allowed_values, constraints)
-    
+    def __str__(self):
+        return f"Domain(allowed_values={self.allowed_values}, allowed_types={self.allowed_types}, constraints={self.constraints})"
